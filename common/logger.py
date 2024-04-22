@@ -58,6 +58,10 @@ class AverageMeter:
     def write_result(self, split, epoch):
         iou, fb_iou = self.compute_iou()
 
+        if not self.loss_buf:
+            print("No loss values to write for", split, "at epoch", epoch)
+            return
+
         loss_buf = torch.stack(self.loss_buf)
         msg = '\n*** %s ' % split
         msg += '[@Epoch %02d] ' % epoch
