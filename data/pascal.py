@@ -84,12 +84,20 @@ class DatasetPASCAL(Dataset):
 
     def read_mask(self, img_name):
         r"""Return segmentation mask in PIL Image"""
-        mask = torch.tensor(np.array(Image.open(os.path.join(self.ann_path, img_name) + '.png')))
-        return mask
+        try:
+            mask = torch.tensor(np.array(Image.open(os.path.join(self.ann_path, img_name) + '.png')))
+            return mask
+        except FileNotFoundError:
+            print(f"Error: Mask image not found for '{img_name}'")
+            return None
 
     def read_img(self, img_name):
         r"""Return RGB image in PIL Image"""
-        return Image.open(os.path.join(self.img_path, img_name) + '.jpg')
+        try:
+            return Image.open(os.path.join(self.img_path, img_name) + '.jpg')
+        except FileNotFoundError:
+            print(f"Error: Image not found for '{img_name}'")
+            return None
 
     def sample_episode(self, idx):
         query_name, class_sample = self.img_metadata[idx]
