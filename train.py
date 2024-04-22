@@ -26,6 +26,16 @@ def train(epoch, model, dataloader, optimizer, training):
     # if training:
     for idx, batch in enumerate(dataloader):
 
+        # Check if batch is empty
+        if not batch:
+            continue
+
+        # Check if required keys are present in the batch
+        if 'query_img' not in batch or 'support_imgs' not in batch or 'support_masks' not in batch:
+            print("Skipping batch due to missing keys")
+            continue
+
+
         # 1. PATNetworks forward pass
         batch = utils.to_cuda(batch)
         logit_mask = model(batch['query_img'], batch['support_imgs'].squeeze(1), batch['support_masks'].squeeze(1))
