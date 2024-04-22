@@ -28,49 +28,49 @@ class DatasetPASCAL(Dataset):
     def __len__(self):
         return len(self.img_metadata) if self.split == 'trn' else 1000
 
-def __getitem__(self, idx):
-    idx %= len(self.img_metadata)  # for testing, as n_images < 1000
-    query_name, support_names, class_sample = self.sample_episode(idx)
-    frame_data = self.load_frame(query_name, support_names)
+    def __getitem__(self, idx):
+        idx %= len(self.img_metadata)  # for testing, as n_images < 1000
+        query_name, support_names, class_sample = self.sample_episode(idx)
+        frame_data = self.load_frame(query_name, support_names)
 
-    # Check if load_frame returned None
-    if frame_data is None:
-        print("Skipping episode due to missing data")
-        return None
+        # Check if load_frame returned None
+        if frame_data is None:
+            print("Skipping episode due to missing data")
+            return None
 
-    query_img, query_cmask, support_imgs, support_cmasks, org_qry_imsize = frame_data
+        query_img, query_cmask, support_imgs, support_cmasks, org_qry_imsize = frame_data
 
-    query_img = self.transform(query_img)
-    query_cmask = F.interpolate(query_cmask.unsqueeze(0).unsqueeze(0).float(), query_img.size()[-2:], mode='nearest').squeeze()
-    query_mask, query_ignore_idx = self.extract_ignore_idx(query_cmask.float(), class_sample)
+        query_img = self.transform(query_img)
+        query_cmask = F.interpolate(query_cmask.unsqueeze(0).unsqueeze(0).float(), query_img.size()[-2:], mode='nearest').squeeze()
+        query_mask, query_ignore_idx = self.extract_ignore_idx(query_cmask.float(), class_sample)
 
-    support_imgs = torch.stack([self.transform(support_img) for support_img in support_imgs])
+        support_imgs = torch.stack([self.transform(support_img) for support_img in support_imgs])
 
-    support_masks = []
-    support_ignore_idxs = []
-    for scmask in support_cmasks:
-        scmask = F.interpolate(scmask.unsqueeze(0).unsqueeze(0).float(), support_imgs.size()[-2:], mode='nearest').squeeze()
-        support_mask, support_ignore_idx = self.extract_ignore_idx(scmask, class_sample)
-        support_masks.append(support_mask)
-        support_ignore_idxs.append(support_ignore_idx)
-    support_masks = torch.stack(support_masks)
-    support_ignore_idxs = torch.stack(support_ignore_idxs)
+        support_masks = []
+        support_ignore_idxs = []
+        for scmask in support_cmasks:
+            scmask = F.interpolate(scmask.unsqueeze(0).unsqueeze(0).float(), support_imgs.size()[-2:], mode='nearest').squeeze()
+            support_mask, support_ignore_idx = self.extract_ignore_idx(scmask, class_sample)
+            support_masks.append(support_mask)
+            support_ignore_idxs.append(support_ignore_idx)
+        support_masks = torch.stack(support_masks)
+        support_ignore_idxs = torch.stack(support_ignore_idxs)
 
-    batch = {'query_img': query_img,
-             'query_mask': query_mask,
-             'query_name': query_name,
-             'query_ignore_idx': query_ignore_idx,
+        batch = {'query_img': query_img,
+                'query_mask': query_mask,
+                'query_name': query_name,
+                'query_ignore_idx': query_ignore_idx,
 
-             'org_query_imsize': org_qry_imsize,
+                'org_query_imsize': org_qry_imsize,
 
-             'support_imgs': support_imgs,
-             'support_masks': support_masks,
-             'support_names': support_names,
-             'support_ignore_idxs': support_ignore_idxs,
+                'support_imgs': support_imgs,
+                'support_masks': support_masks,
+                'support_names': support_names,
+                'support_ignore_idxs': support_ignore_idxs,
 
-             'class_id': torch.tensor(class_sample)}
+                'class_id': torch.tensor(class_sample)}
 
-    return batch
+        return batch
 
 
     def extract_ignore_idx(self, mask, class_id):
