@@ -23,6 +23,10 @@ def train(epoch, model, dataloader, optimizer, training):
     model.module.train_mode() if training else model.module.eval()
     average_meter = AverageMeter(dataloader.dataset)
 
+    avg_loss = 0.0
+    miou = 0.0
+    fb_iou = 0.0
+
     # if training:
     for idx, batch in enumerate(dataloader):
 
@@ -73,12 +77,15 @@ def train(epoch, model, dataloader, optimizer, training):
             batch['query_img'] = torch.stack(processed_images)
             batch['query_mask'] = torch.stack(processed_masks)
 
-        # Write evaluation results
-        average_meter.write_result('Training' if training else 'Validation', epoch)
-        avg_loss = utils.mean(average_meter.loss_buf)
-        miou, fb_iou = average_meter.compute_iou()
+            # Update evaluation metrics
+            avg_loss = utils.mean(average_meter.loss_buf)
+            miou, fb_iou = average_meter.compute_iou()
+
+    # Write evaluation results
+    average_meter.write_result('Training' if training else 'Validation', epoch)
 
     return avg_loss, miou, fb_iou
+
 
 
 if __name__ == '__main__':
