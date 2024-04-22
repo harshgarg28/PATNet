@@ -30,33 +30,53 @@ def train(epoch, model, dataloader, optimizer, training):
         if not batch:
             continue
 
-        # Check if required keys are present in the batch
-        if 'query_img' not in batch or 'support_imgs' not in batch or 'support_masks' not in batch:
-            print("Skipping batch due to missing keys")
-            continue
+        # Initialize lists to store processed images and masks
+        processed_images = []
+        processed_masks = []
 
+        # Process each sample in the batch
+        for sample_idx in range(len(batch['query_img'])):
+            # Check if required keys are present in the sample
+            if 'query_img' not in batch or 'support_imgs' not in batch or 'support_masks' not in batch:
+                print("Skipping sample {} due to missing keys".format(sample_idx))
+                continue
 
-        # 1. PATNetworks forward pass
-        batch = utils.to_cuda(batch)
-        logit_mask = model(batch['query_img'], batch['support_imgs'].squeeze(1), batch['support_masks'].squeeze(1))
-        pred_mask = logit_mask.argmax(dim=1)
+            # Extract relevant data for the sample
+            query_img = batch['query_img'][sample_idx]
+            support_imgs = batch['support_imgs'][sample_idx]
+            support_masks = batch['support_masks'][sample_idx]
 
-        # 2. Compute loss & update model parameters
-        loss = model.module.compute_objective(logit_mask, batch['query_mask'])
-        if training:
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            # 1. PATNetworks forward pass
+            batch = utils.to_cuda({'query_img': query_img.unsqueeze(0),
+                                   'support_imgs': support_imgs.unsqueeze(0),
+                                   'support_masks': support_masks.unsqueeze(0)})
+            logit_mask = model(batch['query_img'], batch['support_imgs'].squeeze(1), batch['support_masks'].squeeze(1))
+            pred_mask = logit_mask.argmax(dim=1)
 
-        # 3. Evaluate prediction
-        area_inter, area_union = Evaluator.classify_prediction(pred_mask, batch)
-        average_meter.update(area_inter, area_union, batch['class_id'], loss.detach().clone())
-        average_meter.write_process(idx, len(dataloader), epoch, write_batch_idx=50)
+            # 2. Compute loss & update model parameters
+            loss = model.module.compute_objective(logit_mask, batch['query_mask'])
+            if training:
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
-    # Write evaluation results
-    average_meter.write_result('Training' if training else 'Validation', epoch)
-    avg_loss = utils.mean(average_meter.loss_buf)
-    miou, fb_iou = average_meter.compute_iou()
+            # 3. Evaluate prediction
+            area_inter, area_union = Evaluator.classify_prediction(pred_mask, batch)
+            average_meter.update(area_inter, area_union, batch['class_id'], loss.detach().clone())
+            average_meter.write_process(idx, len(dataloader), epoch, write_batch_idx=50)
+
+            processed_images.append(query_img)
+            processed_masks.append(batch['query_mask'])
+
+        # Concatenate processed images and masks to form a batch
+        if processed_images:
+            batch['query_img'] = torch.stack(processed_images)
+            batch['query_mask'] = torch.stack(processed_masks)
+
+        # Write evaluation results
+        average_meter.write_result('Training' if training else 'Validation', epoch)
+        avg_loss = utils.mean(average_meter.loss_buf)
+        miou, fb_iou = average_meter.compute_iou()
 
     return avg_loss, miou, fb_iou
 
