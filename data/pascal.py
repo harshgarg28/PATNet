@@ -78,6 +78,16 @@ class DatasetPASCAL(Dataset):
         support_imgs = [self.read_img(name) for name in support_names]
         support_masks = [self.read_mask(name) for name in support_names]
 
+        # Check if any query image or mask is None
+        if query_img is None or query_mask is None:
+            print(f"Skipping query: {query_name}")
+            return 
+
+        # Check if any support image or mask is None
+        if any(img is None for img in support_imgs) or any(mask is None for mask in support_masks):
+            print("Skipping query due to missing support image or mask")
+            return 
+
         org_qry_imsize = query_img.size
 
         return query_img, query_mask, support_imgs, support_masks, org_qry_imsize
