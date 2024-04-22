@@ -36,7 +36,7 @@ class DatasetPASCAL(Dataset):
         # Check if load_frame returned None
         if frame_data is None:
             print("Skipping episode due to missing data")
-            return None
+            return {}
 
         query_img, query_cmask, support_imgs, support_cmasks, org_qry_imsize = frame_data
 
